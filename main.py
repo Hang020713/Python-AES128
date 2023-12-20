@@ -137,17 +137,6 @@ def addRoundKey(data, key):
     for i in range(len(data)):
         data[i] = data[i] ^ key[i]
 
-#Main program
-data = [
-    0xdb, 0x13, 0x53, 0x45
-]
 '''
-data = [
-        1,2,3,4,
-        5,6,7,8,
-        9,10,11,12,
-        13,14,15,16
-    ]
+Full progression: https://www.kavaliro.com/wp-content/uploads/2014/03/AES.pdf
 '''
-mixColumns(data)
-#print(data)
