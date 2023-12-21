@@ -58,6 +58,7 @@ sboxInverse = [
 def subBytes(data):
     for i in range(len(data)):
         data[i] = sbox[data[i]]
+
 def subBytesInverse(data):
     for i in range(len(data)):
         data[i] = sboxInverse[data[i]]
@@ -82,9 +83,19 @@ After
 8 5 6 7
 '''
 def shiftRows(data):
-    for i in range(4):
-        new_data = data[i*4 : i*4 + 4]
-        data[i*4 : i*4 + 4] = new_data[i:] + new_data[0: i]
+    #Restruct new data
+    for r in range(4):
+        #Get row by row
+        tmp = []
+        for c in range(4):
+            tmp.append(data[r + c * 4])
+        
+        #Shift
+        tmp = tmp[r:] + tmp[0:r]
+        
+        #Replace
+        for c in range(4):
+            data[r + c * 4] = tmp[c]
 
 '''
 MixColumns
@@ -112,7 +123,14 @@ def gmul(a, b):
         return tmp if a < 128 else tmp ^ 0x1b
     if b == 3:
         return gmul(a, 2) ^ a
-def mixColumns(data):
+def mixColumns(data): 
+    '''
+    table = 
+    [2, 3, 1, 1]    
+    [1, 2, 3, 1]
+    [1, 1, 2, 3]
+    [3, 1, 1, 2]
+    '''
     table = [
         2, 3, 1, 1,
         1, 2, 3, 1,
@@ -120,23 +138,127 @@ def mixColumns(data):
         3, 1, 1, 2
     ]
 
-    table_count = 0
-    for i in range(4):
-        tmp = 0
-        for k in range(4):
-            if(k == 0):    
-                tmp = gmul(data[k], table[i * 4 + k])
-            else:
-                tmp = tmp ^ gmul(data[k], table[i * 4 + k])
-        data[i] = tmp
+    new_data = []
+    for r in range(4):
+        for c in range(4):
+            tmp = 0
+            for k in range(4):
+                if(k == 0):    
+                    tmp = gmul(data[r * 4 + k], table[c * 4 + k])
+                else:
+                    tmp = tmp ^ gmul(data[r * 4 + k], table[c * 4 + k])
+            new_data.append(tmp)
+    
+    for i in range(len(data)):
+        data[i] = new_data[i]
+    return
 
 '''
 AddRoundKey
+
+w refer original key
+split into w[0], w[1], w[2] and w[3]
+w[0] = (54, 68, 61, 74), w[1] = (73, 20, 6D, 79), w[2] = (20, 4B, 75, 6E), w[3] = (67, 20, 46, 75)
+
+g(w[3])
+1. left shift once
+2. byte subsitution
+3. add round constant (1, 0, 0, 0)
+constant = [01, 02, 04, 08, 10, 20, 40, 80, 1B, 36] in hex
+
+w[4] = g(w[3]) ^ w[0]
+w[5] = w[4] ^ w[1]
+w[6] = w[5] ^ w[2]
+w[7] = w[6] ^ w[3]
+
+
 '''
-def addRoundKey(data, key):
+def addRoundKey(data, key, round):
     for i in range(len(data)):
         data[i] = data[i] ^ key[i]
 
+    #Process g(w[3])
+    constant = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36]
+    if(round >= len(constant)):
+        return
+    gw3 = key[12:]
+    gw3 = gw3[1:] + gw3[0:1]
+    subBytes(gw3)
+    gw3[0] ^= constant[round]
+
+    #Process others
+    new_key = []
+    for k in range(4):
+        for w in range(4):
+            gw3[w] ^= key[k*4 + w]
+            new_key.append(gw3[w])
+    
+    for i in range(len(new_key)):
+        key[i] = new_key[i]
+
+
+
+#128 16bit, 192 24bit, 256 32bit
+def printHex(data):
+    for r in range(4):
+        for i in range(r, len(data), 4):
+            print(hex(data[i]), end=' ')
+        print()
+    print()
+
 '''
 Full progression: https://www.kavaliro.com/wp-content/uploads/2014/03/AES.pdf
+
+shift left once: 
 '''
+#len(key.encode('utf-8'))
+key = [ord(c) for c in 'Thats my Kung Fu']
+plain_text = [ord(x) for x in 'Two One Nine Two']
+print("[Start]")
+print("Key: ")
+printHex(key)
+print("Plain Text: ")
+printHex(plain_text)
+
+#Round 1
+for i in range(11):
+    print("[ Round", i, "]")    
+    print('[Key]:')
+    for k in range(len(key)):
+        print(hex(key[k]), end=' ')
+    print()
+
+    if(i == 0):
+        addRoundKey(plain_text, key, i)
+        print("AddRoundKey:")
+        printHex(plain_text)
+        continue
+    if(i == 10):
+        #Last Round
+        subBytes(plain_text)
+        print("SubBytes:")
+        printHex(plain_text)
+
+        shiftRows(plain_text)
+        print("ShiftRows: ")
+        printHex(plain_text)
+
+        addRoundKey(plain_text, key, i)
+        print("AddRoundKey: ")
+        printHex(plain_text)
+        break
+    subBytes(plain_text)
+    print("SubBytes:")
+    printHex(plain_text)
+
+    shiftRows(plain_text)
+    print("ShiftRows: ")
+    printHex(plain_text)
+
+    mixColumns(plain_text)
+    print("MixColumns: ")
+    printHex(plain_text)
+
+    addRoundKey(plain_text, key, i)
+    print("AddRoundKey: ")
+    printHex(plain_text)
