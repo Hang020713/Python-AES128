@@ -96,6 +96,20 @@ def shiftRows(data):
         #Replace
         for c in range(4):
             data[r + c * 4] = tmp[c]
+def shiftRowsInverse(data):
+    #Restruct new data
+    for r in range(4):
+        #Get row by row
+        tmp = []
+        for c in range(4):
+            tmp.append(data[r + c * 4])
+        
+        #Shift
+        tmp = tmp[4-r: 4] + tmp[0:4-r]
+        
+        #Replace
+        for c in range(4):
+            data[r + c * 4] = tmp[c]
 
 '''
 MixColumns
@@ -105,6 +119,15 @@ a for data
 [r1] = [1 2 3 1] x [a1]
 [r2]   [1 1 2 3]   [a2]
 [r3]   [3 1 1 2]   [a3]
+
+fixed polynomial
+a(a) = 
+3x^3 + x^2 + x + 2
+a3x^3 + a2x^2 + a1x + a0
+
+a^-1(x) = 
+11x^3 + 13x^2 + 9x + 14
+
 
 Galois field GF(28)
 Rijndael MixColumns
@@ -123,19 +146,44 @@ def gmul(a, b):
         return tmp if a < 128 else tmp ^ 0x1b
     if b == 3:
         return gmul(a, 2) ^ a
-def mixColumns(data): 
-    '''
-    table = 
-    [2, 3, 1, 1]    
-    [1, 2, 3, 1]
-    [1, 1, 2, 3]
-    [3, 1, 1, 2]
-    '''
+    if b == 9:
+        return gmul(gmul(gmul(a, 2), 2), 2)^a
+    if b == 11:
+        return gmul(gmul(gmul(a, 2), 2)^a, 2)^a
+    if b == 13:
+        return gmul(gmul(gmul(a, 2)^a, 2), 2)^a
+    if b == 14:
+        return gmul(gmul(gmul(a, 2)^a, 2)^a, 2)
+
+def mixColumns(data):
     table = [
         2, 3, 1, 1,
         1, 2, 3, 1,
         1, 1, 2, 3,
         3, 1, 1, 2
+    ]
+
+    new_data = []
+    for r in range(4):
+        for c in range(4):
+            tmp = 0
+            for k in range(4):
+                if(k == 0):    
+                    tmp = gmul(data[r * 4 + k], table[c * 4 + k])
+                else:
+                    tmp = tmp ^ gmul(data[r * 4 + k], table[c * 4 + k])
+            new_data.append(tmp)
+    
+    for i in range(len(data)):
+        data[i] = new_data[i]
+    return
+
+def mixColumnsInverse(data):
+    table = [
+        14, 11, 13, 9,
+        9, 14, 11, 13,
+        13, 9, 14, 11,
+        11, 13, 9, 14
     ]
 
     new_data = []
@@ -170,33 +218,42 @@ w[4] = g(w[3]) ^ w[0]
 w[5] = w[4] ^ w[1]
 w[6] = w[5] ^ w[2]
 w[7] = w[6] ^ w[3]
-
-
 '''
 def addRoundKey(data, key, round):
-    for i in range(len(data)):
-        data[i] = data[i] ^ key[i]
-
     #Process g(w[3])
     constant = [0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36]
-    if(round >= len(constant)):
+    if(round > len(constant)):
         return
-    gw3 = key[12:]
-    gw3 = gw3[1:] + gw3[0:1]
-    subBytes(gw3)
-    gw3[0] ^= constant[round]
 
-    #Process others
     new_key = []
-    for k in range(4):
-        for w in range(4):
-            gw3[w] ^= key[k*4 + w]
-            new_key.append(gw3[w])
+    for i in range(len(key)):
+        new_key.append(key[i])
+
+    for i in range(round):
+        gw3 = new_key[12:]
+        gw3 = gw3[1:] + gw3[0:1]
+        subBytes(gw3)
+        gw3[0] ^= constant[i]
+
+        #Process others
+        tmp = []
+        for k in range(4):
+            for w in range(4):
+                gw3[w] ^= new_key[k*4 + w]
+                tmp.append(gw3[w])
+        
+        for i in range(len(tmp)):
+            new_key[i] = tmp[i]
     
-    for i in range(len(new_key)):
-        key[i] = new_key[i]
+    #Print key
+    print('[Key]:')
+    for k in range(len(new_key)):
+        print(hex(new_key[k]), end=' ')
+    print()
 
-
+    #Add key round
+    for i in range(len(data)):
+        data[i] = data[i] ^ new_key[i]
 
 #128 16bit, 192 24bit, 256 32bit
 def printHex(data):
@@ -212,53 +269,124 @@ Full progression: https://www.kavaliro.com/wp-content/uploads/2014/03/AES.pdf
 shift left once: 
 '''
 #len(key.encode('utf-8'))
-key = [ord(c) for c in 'Thats my Kung Fu']
-plain_text = [ord(x) for x in 'Two One Nine Two']
-print("[Start]")
-print("Key: ")
-printHex(key)
-print("Plain Text: ")
-printHex(plain_text)
+def encrypt(data, key):
+    print("[Encrypt Start]")
+    print("Key: ")
+    printHex(key)
+    print("Plain Text: ")
+    printHex(data)
 
-#Round 1
-for i in range(11):
-    print("[ Round", i, "]")    
-    print('[Key]:')
-    for k in range(len(key)):
-        print(hex(key[k]), end=' ')
-    print()
+    #Round 1
+    for i in range(11):
+        print("[ Round", i, "]")
 
-    if(i == 0):
-        addRoundKey(plain_text, key, i)
-        print("AddRoundKey:")
-        printHex(plain_text)
-        continue
-    if(i == 10):
-        #Last Round
-        subBytes(plain_text)
+        if(i == 0):
+            addRoundKey(data, key, i)
+            print("AddRoundKey:")
+            printHex(data)
+            continue
+        if(i == 10):
+            #Last Round
+            subBytes(data)
+            print("SubBytes:")
+            printHex(data)
+
+            shiftRows(data)
+            print("ShiftRows: ")
+            printHex(data)
+
+            addRoundKey(data, key, i)
+            print("AddRoundKey: ")
+            printHex(data)
+            break
+        subBytes(data)
         print("SubBytes:")
-        printHex(plain_text)
+        printHex(data)
 
-        shiftRows(plain_text)
+        shiftRows(data)
         print("ShiftRows: ")
-        printHex(plain_text)
+        printHex(data)
 
-        addRoundKey(plain_text, key, i)
+        mixColumns(data)
+        print("MixColumns: ")
+        printHex(data)
+
+        addRoundKey(data, key, i)
         print("AddRoundKey: ")
-        printHex(plain_text)
-        break
-    subBytes(plain_text)
-    print("SubBytes:")
-    printHex(plain_text)
+        printHex(data)
 
-    shiftRows(plain_text)
-    print("ShiftRows: ")
-    printHex(plain_text)
+    return data
 
-    mixColumns(plain_text)
-    print("MixColumns: ")
-    printHex(plain_text)
+def decrypt(data, key):
+    print("[Decrypt Start]")
+    print("Key: ")
+    printHex(key)
+    print("Plain Text: ")
+    printHex(data)
 
-    addRoundKey(plain_text, key, i)
-    print("AddRoundKey: ")
-    printHex(plain_text)
+    for i in range(10, -1, -1):
+        print("[ Round", i, "]")    
+        print('[Key]:')
+        for k in range(len(key)):
+            print(hex(key[k]), end=' ')
+        print()
+
+        if(i == 0):
+            #Last Round
+            shiftRowsInverse(data)
+            print("ShiftRowsInverse: ")
+            printHex(data)
+
+            subBytesInverse(data)
+            print("SubBytesInverse:")
+            printHex(data)
+            
+            addRoundKey(data, key, i)
+            print("AddRoundKey:")
+            printHex(data)
+            break
+        if(i == 10):
+            #First Round
+            addRoundKey(data, key, i)
+            print("AddRoundKey: ")
+            printHex(data)
+            continue
+
+        shiftRowsInverse(data)
+        print("ShiftRowsInverse: ")
+        printHex(data)
+
+        subBytesInverse(data)
+        print("SubBytesInverse:")
+        printHex(data)
+
+        addRoundKey(data, key, i)
+        print("AddRoundKey: ")
+        printHex(data)
+
+        mixColumnsInverse(data)
+        print("MixColumnsInverse: ")
+        printHex(data)
+
+    return data
+
+key = 'Thats my Kung Fu'
+data = 'Two One Nine Two'
+key_data = [ord(c) for c in key]
+data_data = [ord(x) for x in data]
+encrypt_data = encrypt(data_data, key_data)
+'''
+data = [
+    0x47, 0x37, 0x94, 0xed,
+    0x40, 0xd4, 0xe4, 0xa5,
+    0xa3, 0x70, 0x3a, 0xa6,
+    0x4c, 0x9f, 0x42, 0xbc
+]
+printHex(data)
+mixColumnsInverse(data)
+print("mixInverse: ")
+printHex(data)
+'''
+decrypt_data = decrypt(encrypt_data, key_data)
+data_data = [ord(x) for x in data]
+printHex(data_data)
