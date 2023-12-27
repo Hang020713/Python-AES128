@@ -333,7 +333,7 @@ def padding(data):
         data.append(0)
 
 key =  'Thats my Kung Fu'
-data = 'What''s up homie, it''s tony'
+data = input('Enter plain text: ')
 key_data = [ord(c) for c in key]
 data_data = [ord(x) for x in data]
 padding(data_data)
