@@ -1,3 +1,4 @@
+import random
 '''
 128bit - 10 rounds
 192bit - 12 rounds
@@ -332,9 +333,19 @@ def padding(data):
     while(len(data) % 16 != 0):
         data.append(0)
 
-key =  'Thats my Kung Fu'
+def randomGenerateKey():
+    key = []
+    while(len(key) != 16):
+        key.append(random.randint(0, 255))
+    return key
+
+key_data = randomGenerateKey()
+for i in range(len(key_data)):
+    print(key_data[i], end=' ')
+print()
+
 data = input('Enter plain text: ')
-key_data = [ord(c) for c in key]
+#key_data = [ord(c) for c in key]
 data_data = [ord(x) for x in data]
 padding(data_data)
 
