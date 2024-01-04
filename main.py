@@ -344,27 +344,56 @@ for i in range(len(key_data)):
     print(key_data[i], end=' ')
 print()
 
-data = input('Enter plain text: ')
+#Read file
+file_path = input("Original file path: ")
+file = open(file_path, mode='rb')
+fileContent = file.read()
+file.close()
+
+#data = input('Enter plain text: ')
 #key_data = [ord(c) for c in key]
-data_data = [ord(x) for x in data]
+#data_data = [ord(x) for x in fileContent]
+data_data = [x for x in fileContent]
 padding(data_data)
 
 #Original data
+'''
 print("[Original]", end=' ')
 for i in range(len(data_data)):
     print(chr(data_data[i]), end='')
 print()
+'''
 
 #Encrypt text
 encrypt_data = encrypt(data_data, key_data)
+file_path = input("Encrypt file path: ")
+with open(file_path, mode='wb') as file:
+    tmp = bytearray()
+    tmp.extend(encrypt_data)
+    tmp = bytes(tmp)
+    file.write(tmp)
+    file.flush()
+    file.close()
+'''
 print("[Encrypt]", end=' ')
 for i in range(len(encrypt_data)):
     print(chr(encrypt_data[i]), end='')
 print()
+'''
 
 #Decrypted text
 decrypt_data = decrypt(encrypt_data, key_data)
+file_path = input("Decrypt file path: ")
+with open(file_path, mode='wb') as file:
+    tmp = bytearray()
+    tmp.extend(decrypt_data)
+    tmp = bytes(tmp)
+    file.write(tmp)
+    file.flush()
+    file.close()
+'''
 print("[Decrypt]", end=' ')
 for i in range(len(decrypt_data)):
     print(chr(decrypt_data[i]), end='')
 print()
+'''
