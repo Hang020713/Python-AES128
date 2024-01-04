@@ -322,14 +322,24 @@ def decrypt(data, key):
             mixColumnsInverse(tmp_data)
             data[b * 16: (16)*(b + 1)] = tmp_data
 
+    
+    #Remove the padding
+    if(data[-1] == 16):
+        del data[-1]
+    while(data[-1] == 0):
+        del data[-1]
+    del data[-1]
+
     return data
 
 def padding(data):
     #Not fit 128 bit
     if(len(data) % 16 == 0):
+        data.append(16)
         return
     
     #More/Less then 128 bit
+    data.append(16 - len(data) % 16)
     while(len(data) % 16 != 0):
         data.append(0)
 
@@ -365,8 +375,8 @@ print()
 '''
 
 #Encrypt text
-encrypt_data = encrypt(data_data, key_data)
 file_path = input("Encrypt file path: ")
+encrypt_data = encrypt(data_data, key_data)
 with open(file_path, mode='wb') as file:
     tmp = bytearray()
     tmp.extend(encrypt_data)
@@ -382,8 +392,8 @@ print()
 '''
 
 #Decrypted text
-decrypt_data = decrypt(encrypt_data, key_data)
 file_path = input("Decrypt file path: ")
+decrypt_data = decrypt(encrypt_data, key_data)
 with open(file_path, mode='wb') as file:
     tmp = bytearray()
     tmp.extend(decrypt_data)
